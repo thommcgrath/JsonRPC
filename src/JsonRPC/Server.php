@@ -162,12 +162,17 @@ class Server
      *
      * @access public
      */
-    public function sendAuthenticationFailureResponse()
+    public function sendAuthenticationFailureResponse($payload)
     {
         header('WWW-Authenticate: Basic realm="JsonRPC"');
         header('Content-Type: application/json');
         header('HTTP/1.0 401 Unauthorized');
-        echo '{"error": "Authentication failed"}';
+
+		// A notification (request without id) does not expect a response
+		if ((is_array($payload)) && (array_key_exists('id', $payload))) {
+			echo '{ "jsonrpc" : "2.0", "id" : "' . $payload['id'] . '", "error" : { "code" : "401", "message" : "Authentication failed" } }';
+		}
+
         exit;
     }
 
@@ -176,11 +181,16 @@ class Server
      *
      * @access public
      */
-    public function sendForbiddenResponse()
+    public function sendForbiddenResponse($payload)
     {
         header('Content-Type: application/json');
         header('HTTP/1.0 403 Forbidden');
-        echo '{"error": "Access Forbidden"}';
+
+		// A notification (request without id) does not expect a response
+        if ((is_array($payload)) && (array_key_exists('id', $payload))) {
+	        echo '{ "jsonrpc" : "2.0", "id" : "' . $payload['id'] . '", "error" : { "code" : "403", "message" : "Access forbidden" } }';
+	    }
+
         exit;
     }
 
@@ -501,10 +511,10 @@ class Server
             );
         }
         catch (AuthenticationFailure $e) {
-            $this->sendAuthenticationFailureResponse();
+            $this->sendAuthenticationFailureResponse($this->payload);
         }
         catch (AccessDeniedException $e) {
-            $this->sendForbiddenResponse();
+            $this->sendForbiddenResponse($this->payload);
         }
         catch (ResponseException $e) {
             return $this->getResponse(array(
